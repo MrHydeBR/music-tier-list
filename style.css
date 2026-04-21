@@ -46,6 +46,7 @@
 }
 
 [data-theme='dark'] {
+  --color-topbar-bg: rgba(20, 20, 22, 0.8);
   --color-bg: #0b0b0c;
   --color-surface: #141416;
   --color-surface-2: #1a1a1d;
@@ -70,6 +71,7 @@
 }
 
 [data-theme='light'] {
+  --color-topbar-bg: rgba(255, 255, 255, 0.85);
   --color-bg: #f6f6f4;
   --color-surface: #ffffff;
   --color-surface-2: #fafaf8;
@@ -109,8 +111,8 @@ body {
   font-size: var(--text-base);
   color: var(--color-text);
   background:
-    radial-gradient(1200px 600px at 10% -10%, color-mix(in oklab, var(--color-primary) 18%, transparent), transparent 60%),
-    radial-gradient(900px 500px at 100% 10%, color-mix(in oklab, #ff4d6d 10%, transparent), transparent 60%),
+    radial-gradient(1200px 600px at 10% -10%, rgba(29, 185, 84, 0.18), transparent 60%),
+    radial-gradient(900px 500px at 100% 10%, rgba(255, 77, 109, 0.10), transparent 60%),
     var(--color-bg);
   line-height: 1.5;
 }
@@ -135,7 +137,7 @@ a:hover { text-decoration: underline; }
   align-items: center;
   padding: var(--space-4) var(--space-6);
   border-bottom: 1px solid var(--color-divider);
-  background: color-mix(in oklab, var(--color-surface) 80%, transparent);
+  background: var(--color-topbar-bg, rgba(20, 20, 22, 0.8));
   backdrop-filter: blur(14px);
   position: sticky;
   top: 0;
@@ -167,7 +169,7 @@ a:hover { text-decoration: underline; }
 .btn-ghost:hover { background: var(--color-surface-hover); border-color: var(--color-text-faint); }
 .btn-ghost.icon-only { padding: var(--space-2); }
 .btn-ghost.danger { color: var(--color-danger); }
-.btn-ghost.danger:hover { background: color-mix(in oklab, var(--color-danger) 12%, transparent); border-color: var(--color-danger); }
+.btn-ghost.danger:hover { background: rgba(239, 74, 91, 0.12); border-color: var(--color-danger); }
 
 .btn-primary {
   background: var(--color-primary);
@@ -211,7 +213,7 @@ a:hover { text-decoration: underline; }
 
 /* Setup card */
 .setup-card {
-  background: linear-gradient(180deg, color-mix(in oklab, var(--color-primary) 8%, var(--color-surface)), var(--color-surface));
+  background: linear-gradient(180deg, rgba(29, 185, 84, 0.08), var(--color-surface));
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-6);
@@ -359,14 +361,14 @@ a:hover { text-decoration: underline; }
   gap: var(--space-2);
   padding: var(--space-2);
   background: var(--color-surface-offset);
-  border: 1px dashed color-mix(in oklab, var(--tier-color) 30%, var(--color-border));
+  border: 1px dashed var(--color-border);
   border-radius: var(--radius-md);
   min-height: 96px;
   align-content: flex-start;
   transition: background var(--transition-interactive);
 }
 .tier-drop.sortable-drag-over {
-  background: color-mix(in oklab, var(--tier-color) 8%, var(--color-surface-offset));
+  background: var(--color-surface-hover);
 }
 
 /* =========================================================

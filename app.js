@@ -34,6 +34,7 @@ const state = {
 };
 
 let accessToken = null;
+let tokenExpiresAt = 0;
 let clientId = null;
 
 /* ---------------- Utilities ---------------- */
@@ -76,8 +77,13 @@ async function startSpotifyAuth() {
   }
   const verifier = randomString(96);
   const challenge = await sha256(verifier);
-  sessionStorage.setItem('pkce_verifier', verifier);
-  sessionStorage.setItem('pkce_client', clientId);
+
+  // We cannot use storage APIs in the sandboxed iframe. Instead, encode the
+  // PKCE verifier + client ID into the OAuth `state` param, which Spotify
+  // echoes back verbatim in the redirect. The state is not security-sensitive
+  // in this flow because PKCE already binds the code to the verifier.
+  const stateObj = { v: verifier, c: clientId, n: randomString(16) };
+  const statePacked = btoa(unescape(encodeURIComponent(JSON.stringify(stateObj))));
 
   const scope = 'playlist-read-private playlist-read-collaborative';
   const params = new URLSearchParams({
@@ -86,14 +92,21 @@ async function startSpotifyAuth() {
     redirect_uri: getRedirectUri(),
     code_challenge_method: 'S256',
     code_challenge: challenge,
+    state: statePacked,
     scope,
   });
   window.location.href = 'https://accounts.spotify.com/authorize?' + params.toString();
 }
 
-async function exchangeCodeForToken(code) {
-  const verifier = sessionStorage.getItem('pkce_verifier');
-  const savedClient = sessionStorage.getItem('pkce_client');
+async function exchangeCodeForToken(code, statePacked) {
+  let verifier, savedClient;
+  try {
+    const unpacked = JSON.parse(decodeURIComponent(escape(atob(statePacked))));
+    verifier = unpacked.v;
+    savedClient = unpacked.c;
+  } catch {
+    throw new Error('State OAuth inválido');
+  }
   if (!verifier || !savedClient) throw new Error('PKCE state ausente');
   const body = new URLSearchParams({
     grant_type: 'authorization_code',
@@ -110,25 +123,11 @@ async function exchangeCodeForToken(code) {
   if (!res.ok) throw new Error('Falha no token: ' + res.status);
   const data = await res.json();
   accessToken = data.access_token;
-  // Store in sessionStorage only (not localStorage — may be blocked)
-  try { sessionStorage.setItem('spotify_token', accessToken); } catch {}
-  try { sessionStorage.setItem('spotify_token_expires', Date.now() + (data.expires_in * 1000)); } catch {}
+  tokenExpiresAt = Date.now() + (data.expires_in * 1000);
+  clientId = savedClient; // ensure clientId is set for subsequent calls
 }
 
-function restoreTokenFromSession() {
-  try {
-    const tok = sessionStorage.getItem('spotify_token');
-    const exp = Number(sessionStorage.getItem('spotify_token_expires') || 0);
-    if (tok && Date.now() < exp) accessToken = tok;
-  } catch {}
-}
 
-function restoreClientFromSession() {
-  try {
-    const cid = sessionStorage.getItem('spotify_client_id');
-    if (cid) clientId = cid;
-  } catch {}
-}
 
 /* ---------------- Spotify API ---------------- */
 async function spotifyFetch(path, opts = {}) {
@@ -139,7 +138,8 @@ async function spotifyFetch(path, opts = {}) {
   });
   if (res.status === 401) {
     accessToken = null;
-    try { sessionStorage.removeItem('spotify_token'); } catch {}
+    tokenExpiresAt = 0;
+    updateAuthButton();
     throw new Error('Sessão Spotify expirou — entre novamente');
   }
   if (!res.ok) throw new Error('Spotify API erro ' + res.status);
@@ -647,24 +647,22 @@ async function init() {
     catch { $('#redirectUri').select(); document.execCommand('copy'); toast('Copiado'); }
   };
 
-  // Client ID persistence (session only)
-  restoreClientFromSession();
+  // Client ID: in-memory only. User re-enters each session (no storage allowed).
   if (clientId) $('#clientId').value = clientId;
   $('#btnSaveClient').onclick = () => {
     const v = $('#clientId').value.trim();
     if (!v) return toast('Cole o Client ID');
     clientId = v;
-    try { sessionStorage.setItem('spotify_client_id', v); } catch {}
     toast('Client ID salvo');
     $('#setup').hidden = true;
   };
 
-  // Handle OAuth callback (?code=…)
+  // Handle OAuth callback (?code=…&state=…). The state carries the PKCE
+  // verifier + client ID since we can't use sessionStorage in the sandbox.
   const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.has('code')) {
+  if (urlParams.has('code') && urlParams.has('state')) {
     try {
-      restoreClientFromSession();
-      await exchangeCodeForToken(urlParams.get('code'));
+      await exchangeCodeForToken(urlParams.get('code'), urlParams.get('state'));
       // Clean URL
       const clean = getRedirectUri() + (window.location.hash || '');
       window.history.replaceState({}, '', clean);
@@ -672,10 +670,8 @@ async function init() {
       toast('Conectado ao Spotify');
     } catch (e) {
       console.error(e);
-      toast('Falha na autenticação');
+      toast('Falha na autenticação: ' + e.message);
     }
-  } else {
-    restoreTokenFromSession();
   }
 
   updateAuthButton();
@@ -687,7 +683,7 @@ async function init() {
   $('#btnAuth').onclick = () => {
     if (accessToken) {
       accessToken = null;
-      try { sessionStorage.removeItem('spotify_token'); } catch {}
+      tokenExpiresAt = 0;
       updateAuthButton();
       toast('Sessão encerrada');
     } else {
