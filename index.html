@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Music Tier List · Spotify</title>
+<meta name="description" content="Classifique músicas da sua playlist do Spotify em tiers S a F com arrastar e soltar." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" />
+<link rel="stylesheet" href="style.css" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%231db954'/%3E%3Ctext x='12' y='17' text-anchor='middle' font-family='sans-serif' font-weight='800' font-size='13' fill='%23000'%3ES%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="logo" width="28" height="28" viewBox="0 0 24 24" fill="none" aria-label="Tier List logo">
+        <rect x="1" y="1" width="22" height="22" rx="5" stroke="currentColor" stroke-width="1.8"/>
+        <path d="M7 8h10M7 12h6M7 16h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+      <h1>Music Tier List</h1>
+    </div>
+    <div class="topbar-actions">
+      <button id="btnShare" class="btn-ghost" title="Copiar link compartilhável" data-testid="button-share">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+        Compartilhar
+      </button>
+      <button id="btnExport" class="btn-ghost" title="Exportar como PNG" data-testid="button-export">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Exportar PNG
+      </button>
+      <button id="btnTheme" class="btn-ghost icon-only" title="Alternar tema" data-testid="button-theme" data-theme-toggle></button>
+      <button id="btnAuth" class="btn-spotify" data-testid="button-auth">
+        <svg width="16" height="16" viewBox="0 0 168 168" fill="currentColor"><path d="M83.996.277C37.747.277.253 37.77.253 84.019c0 46.251 37.494 83.741 83.743 83.741 46.254 0 83.744-37.49 83.744-83.741 0-46.246-37.49-83.738-83.745-83.738l.001-.004zm38.404 120.78a5.217 5.217 0 0 1-7.18 1.73c-19.662-12.01-44.414-14.73-73.564-8.07a5.22 5.22 0 0 1-6.249-3.93 5.213 5.213 0 0 1 3.926-6.25c31.9-7.291 59.263-4.15 81.337 9.34 2.46 1.51 3.24 4.72 1.73 7.18zm10.25-22.805c-1.89 3.075-5.91 4.045-8.98 2.155-22.51-13.839-56.823-17.846-83.448-9.764-3.453 1.043-7.1-.903-8.148-4.35a6.538 6.538 0 0 1 4.354-8.143c30.413-9.228 68.222-4.758 94.072 11.127 3.07 1.89 4.04 5.91 2.15 8.976v-.001zm.88-23.744c-26.99-16.031-71.52-17.505-97.289-9.684-4.138 1.255-8.514-1.081-9.768-5.219a7.835 7.835 0 0 1 5.221-9.771c29.581-8.98 78.756-7.245 109.83 11.202 3.73 2.209 4.95 7.016 2.74 10.733-2.2 3.722-7.02 4.949-10.73 2.739z"/></svg>
+        <span id="btnAuthLabel">Entrar com Spotify</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="app">
+    <!-- Setup banner (shown when no Client ID / not authenticated) -->
+    <section id="setup" class="setup-card" hidden>
+      <div class="setup-inner">
+        <h2>Configurar Spotify</h2>
+        <p class="muted">Para importar playlists reais, cole o <strong>Client ID</strong> de um app do Spotify Developer. O <em>Redirect URI</em> abaixo precisa estar registrado no seu app.</p>
+        <div class="setup-row">
+          <label>Redirect URI (copie para o seu app no Spotify Developer)</label>
+          <div class="input-group">
+            <input id="redirectUri" readonly data-testid="input-redirect-uri" />
+            <button class="btn-ghost" id="btnCopyRedirect" data-testid="button-copy-redirect">Copiar</button>
+          </div>
+        </div>
+        <div class="setup-row">
+          <label for="clientId">Spotify Client ID</label>
+          <div class="input-group">
+            <input id="clientId" placeholder="ex: 1a2b3c4d5e6f7g8h9i0j" data-testid="input-client-id" />
+            <button class="btn-primary" id="btnSaveClient" data-testid="button-save-client">Salvar</button>
+          </div>
+          <p class="hint">Salvo apenas no seu navegador (sessão). <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">Criar um app no Spotify Developer →</a></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Playlist import -->
+    <section class="playlist-bar">
+      <div class="playlist-input">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        <input id="playlistUrl" placeholder="Cole o link da playlist do Spotify (ou ID)" data-testid="input-playlist-url" />
+        <button id="btnLoadPlaylist" class="btn-primary" data-testid="button-load-playlist">Carregar</button>
+      </div>
+      <div class="playlist-meta" id="playlistMeta" hidden>
+        <img id="playlistCover" alt="" />
+        <div>
+          <div class="playlist-name" id="playlistName"></div>
+          <div class="playlist-sub" id="playlistSub"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Controls: filter + reset -->
+    <section class="controls">
+      <div class="filter-styles" id="filterStyles"></div>
+      <div class="controls-right">
+        <button id="btnEditStyles" class="btn-ghost" data-testid="button-edit-styles">Editar estilos</button>
+        <button id="btnReset" class="btn-ghost danger" data-testid="button-reset">Limpar tiers</button>
+      </div>
+    </section>
+
+    <!-- Tier list board -->
+    <section id="tierBoard" class="tier-board">
+      <!-- Injected by JS -->
+    </section>
+
+    <!-- Pool -->
+    <section class="pool-section">
+      <div class="pool-header">
+        <h3>Músicas para classificar</h3>
+        <span class="muted" id="poolCount">0</span>
+      </div>
+      <div id="pool" class="pool" data-testid="pool-unranked">
+        <div class="empty-state" id="emptyState">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          <p>Entre com o Spotify e cole o link de uma playlist para começar.</p>
+          <button class="btn-ghost" id="btnLoadDemo" data-testid="button-demo">Ou experimente com dados de exemplo</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Styles editor modal -->
+  <div id="stylesModal" class="modal" hidden>
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2>Editar estilos</h2>
+        <button class="btn-icon" data-close-modal aria-label="Fechar">✕</button>
+      </div>
+      <p class="muted">Use estilos para agrupar e filtrar músicas. Cada música pode ter um estilo atribuído.</p>
+      <div id="stylesList" class="styles-list"></div>
+      <div class="modal-foot">
+        <button id="btnAddStyle" class="btn-ghost">+ Adicionar estilo</button>
+        <button class="btn-primary" data-close-modal>Concluir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast" hidden></div>
+
+  <!-- Libs -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="app.js" type="module"></script>
+</body>
+</html>
