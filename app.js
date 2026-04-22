@@ -216,7 +216,7 @@ async function loadPlaylist(playlistId) {
   } catch (e) {
     console.error(e);
     if (e.status === 403) {
-      toast('403 — Acesso negado. Possíveis causas: (1) playlist editorial/algorítmica do Spotify (não funciona em Dev Mode), (2) sua conta não está na allowlist do app. Tente com uma playlist sua.', 8000);
+      toast('403 — Spotify só permite ler músicas de playlists CRIADAS POR VOCÊ (ou onde você é colaborador) em Development Mode. Crie uma playlist no seu Spotify com as músicas e cole o link dela aqui.', 10000);
     } else {
       toast(e.message || 'Erro ao carregar playlist');
     }
