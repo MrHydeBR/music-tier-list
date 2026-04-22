@@ -41,7 +41,8 @@ let clientId = null;
 function $(sel, root = document) { return root.querySelector(sel); }
 function $$(sel, root = document) { return [...root.querySelectorAll(sel)]; }
 function uid(prefix = 'id') { return prefix + '-' + Math.random().toString(36).slice(2, 10); }
-function toast(msg, ms = 2200) {
+function toast(msg, ms) {
+  if (ms == null) ms = 2200;
   const t = $('#toast');
   t.textContent = msg;
   t.hidden = false;
@@ -142,6 +143,14 @@ async function spotifyFetch(path, opts = {}) {
     updateAuthButton();
     throw new Error('Sessão Spotify expirou — entre novamente');
   }
+  if (res.status === 403) {
+    const err = new Error('403');
+    err.status = 403;
+    throw err;
+  }
+  if (res.status === 404) {
+    throw new Error('Playlist não encontrada (verifique se o link está correto e se a playlist é pública)');
+  }
   if (!res.ok) throw new Error('Spotify API erro ' + res.status);
   return res.json();
 }
@@ -162,11 +171,17 @@ async function loadPlaylist(playlistId) {
     toast('Entre com o Spotify primeiro');
     return;
   }
+  // Editorial/algorithmic playlists (37i9dQZ...) are blocked in dev mode since Nov 2024
+  if (playlistId.startsWith('37i9dQZ')) {
+    toast('Playlists editoriais do Spotify (Top Hits, RapCaviar, etc.) não funcionam em Development Mode. Use uma playlist criada por usuário.', 6000);
+    return;
+  }
   try {
     toast('Carregando playlist…');
     const meta = await spotifyFetch(`/playlists/${playlistId}?fields=id,name,owner(display_name),images`);
     const tracks = [];
-    let url = `/playlists/${playlistId}/tracks?limit=100&fields=items(track(id,name,artists(name),album(images,name))),next`;
+    // Use /items (new endpoint) instead of deprecated /tracks
+    let url = `/playlists/${playlistId}/items?limit=100&fields=items(track(id,name,artists(name),album(images,name))),next`;
     while (url) {
       const page = await spotifyFetch(url);
       for (const it of page.items || []) {
@@ -200,7 +215,11 @@ async function loadPlaylist(playlistId) {
     toast(`${tracks.length} músicas carregadas`);
   } catch (e) {
     console.error(e);
-    toast(e.message || 'Erro ao carregar playlist');
+    if (e.status === 403) {
+      toast('403 — Acesso negado. Possíveis causas: (1) playlist editorial/algorítmica do Spotify (não funciona em Dev Mode), (2) sua conta não está na allowlist do app. Tente com uma playlist sua.', 8000);
+    } else {
+      toast(e.message || 'Erro ao carregar playlist');
+    }
   }
 }
 
