@@ -194,15 +194,28 @@ async function loadPlaylist(playlistId) {
     // Max limit is now 50 (was 100). Don't pass 'fields' param at all -- safer
     // than risking a removed subfield which can cause 400/403.
     let url = `/playlists/${playlistId}/items?limit=50`;
+    let pageNum = 0;
     while (url) {
       const page = await spotifyFetch(url);
+      pageNum++;
+      console.log(`[Tier List] Pagina ${pageNum}: total=${page.total}, items.length=${(page.items || []).length}, next=${page.next}`);
+      if (pageNum === 1 && page.items && page.items.length > 0) {
+        console.log('[Tier List] Estrutura do primeiro item:', JSON.stringify(page.items[0], null, 2).slice(0, 2000));
+      }
       for (const it of page.items || []) {
-        // 'item' is the new field; 'track' is kept for backwards compat but deprecated
-        const t = it.item || it.track;
-        if (!t || !t.id) continue;
+        // Try all known field name variants (future-proof against more Spotify renames)
+        const t = it.item || it.track || it.episode;
+        if (!t) {
+          console.warn('[Tier List] Item sem track/item/episode:', Object.keys(it));
+          continue;
+        }
+        if (!t.id) {
+          console.warn('[Tier List] Track sem id:', Object.keys(t));
+          continue;
+        }
         tracks.push({
           id: t.id,
-          title: t.name,
+          title: t.name || '(sem nome)',
           artist: (t.artists || []).map(a => a.name).join(', '),
           cover: (t.album && t.album.images && t.album.images[0] && t.album.images[0].url) || null,
           style: null,
@@ -210,6 +223,7 @@ async function loadPlaylist(playlistId) {
       }
       url = page.next || null;
     }
+    console.log(`[Tier List] Total de faixas processadas: ${tracks.length}`);
     // Reset state for new playlist
     state.playlist = {
       id: meta.id,
