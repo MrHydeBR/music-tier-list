@@ -144,8 +144,18 @@ async function spotifyFetch(path, opts = {}) {
     throw new Error('Sessão Spotify expirou — entre novamente');
   }
   if (res.status === 403) {
-    const err = new Error('403');
+    // Capture the actual Spotify error message to help diagnose
+    let detail = '';
+    try {
+      const body = await res.clone().json();
+      detail = body?.error?.message || JSON.stringify(body);
+    } catch {
+      try { detail = await res.clone().text(); } catch {}
+    }
+    console.error('Spotify 403 response:', detail);
+    const err = new Error('403: ' + detail);
     err.status = 403;
+    err.detail = detail;
     throw err;
   }
   if (res.status === 404) {
@@ -180,12 +190,15 @@ async function loadPlaylist(playlistId) {
     toast('Carregando playlist…');
     const meta = await spotifyFetch(`/playlists/${playlistId}?fields=id,name,owner(display_name),images`);
     const tracks = [];
-    // Use /items (new endpoint) instead of deprecated /tracks
-    let url = `/playlists/${playlistId}/items?limit=100&fields=items(track(id,name,artists(name),album(images,name))),next`;
+    // Feb 2026 changes: endpoint renamed /tracks -> /items, field 'track' -> 'item'.
+    // Max limit is now 50 (was 100). Don't pass 'fields' param at all -- safer
+    // than risking a removed subfield which can cause 400/403.
+    let url = `/playlists/${playlistId}/items?limit=50`;
     while (url) {
       const page = await spotifyFetch(url);
       for (const it of page.items || []) {
-        const t = it.track;
+        // 'item' is the new field; 'track' is kept for backwards compat but deprecated
+        const t = it.item || it.track;
         if (!t || !t.id) continue;
         tracks.push({
           id: t.id,
@@ -216,7 +229,8 @@ async function loadPlaylist(playlistId) {
   } catch (e) {
     console.error(e);
     if (e.status === 403) {
-      toast('403 — Spotify só permite ler músicas de playlists CRIADAS POR VOCÊ (ou onde você é colaborador) em Development Mode. Crie uma playlist no seu Spotify com as músicas e cole o link dela aqui.', 10000);
+      const msg = e.detail ? `403 — ${e.detail}. (Abra o console do navegador para mais detalhes.)` : '403 — Spotify recusou acesso. Em Dev Mode, só playlists que VOCÊ criou funcionam. Abra o console (F12) para ver a mensagem exata.';
+      toast(msg, 12000);
     } else {
       toast(e.message || 'Erro ao carregar playlist');
     }
